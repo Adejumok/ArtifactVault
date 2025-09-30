@@ -43,16 +43,15 @@ public class ArtifactService {
             throw new ArtifactAlreadyExistException("Artifact already exists and repository is immutable by default");
         });
 
-        Artifact art = Artifact.builder()
-                .name(meta.getName())
-                .version(meta.getVersion())
-                .repository(meta.getRepository())
-                .filename(meta.getFilename())
-                .sha256(blob.getSha256())
-                .size(blob.getSize())
-                .uploader(uploader)
-                .createdAt(Instant.now())
-                .build();
+        Artifact art = new Artifact();
+        art.setName(meta.getName());
+        art.setVersion(meta.getVersion());
+        art.setRepository(meta.getRepository());
+        art.setFilename(meta.getFilename());
+        art.setUploader(uploader);
+        art.setSha256(blob.getSha256());
+        art.setSize(blob.getSize());
+        art.setCreatedAt(Instant.now());
 
         return artifactRepository.save(art);
     }

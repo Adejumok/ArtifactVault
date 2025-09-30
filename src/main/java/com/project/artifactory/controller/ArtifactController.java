@@ -6,6 +6,7 @@ import com.project.artifactory.entity.Blob;
 import com.project.artifactory.service.ArtifactService;
 import com.project.artifactory.service.StorageService;
 import jakarta.validation.Valid;
+import org.springframework.core.io.InputStreamResource;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
@@ -56,43 +57,16 @@ public class ArtifactController {
         return artifactService.findByChecksum(sha256);
     }
 
-    /**
-     * Stream blob by checksum.
-     * Example: GET /api/blobs/{sha256}
-     */
     @GetMapping("/blobs/{sha256}")
-    public ResponseEntity<?> downloadBlob(@PathVariable String sha256) throws Exception {
-        Blob blob = storageService.getBlob(sha256).orElseThrow(() -> new RuntimeException("Blob not found"));
-        try (InputStream in = storageService.loadBlobAsStream(sha256)) {
-            String filename = sha256;
-            String disp = "attachment; filename=\"" + URLEncoder.encode(filename, StandardCharsets.UTF_8) + "\"";
-            return ResponseEntity.ok()
-                    .header(HttpHeaders.CONTENT_DISPOSITION, disp)
-                    .contentType(MediaType.APPLICATION_OCTET_STREAM)
-                    .contentLength(blob.getSize())
-                    .body(in.readAllBytes());
-        }
-    }
-
-    /** for streaming large files*/
-    @GetMapping("/blobs/{sha256}/stream")
-    public ResponseEntity<StreamingResponseBody> downloadBlobStream(@PathVariable String sha256) throws Exception {
-        Blob blob = storageService.getBlob(sha256).orElseThrow(() -> new RuntimeException("Blob not found"));
-        InputStream in = storageService.loadBlobAsStream(sha256);
-        StreamingResponseBody body = outputStream -> {
-            try (InputStream is = in; OutputStream os = outputStream) {
-                byte[] buf = new byte[8192];
-                int r;
-                while ((r = is.read(buf)) != -1) {
-                    os.write(buf, 0, r);
-                }
-                os.flush();
-            }
-        };
+    public  ResponseEntity<InputStreamResource> downloadBlob(@PathVariable String sha256) throws Exception {
+        InputStreamResource inputStreamResource = storageService.downloadBlob(sha256);
+        String disposition = "attachment; filename=\"" + URLEncoder.encode(sha256, StandardCharsets.UTF_8) + "\"";
         return ResponseEntity.ok()
+                .header(HttpHeaders.CONTENT_DISPOSITION, disposition)
                 .contentType(MediaType.APPLICATION_OCTET_STREAM)
-                .contentLength(blob.getSize())
-                .body(body);
+                .contentLength(inputStreamResource.contentLength())
+                .body(new InputStreamResource(inputStreamResource));
+
     }
 
 }

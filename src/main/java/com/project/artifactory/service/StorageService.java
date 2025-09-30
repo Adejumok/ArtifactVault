@@ -1,8 +1,11 @@
 package com.project.artifactory.service;
 
+import com.project.artifactory.dto.BlobResponse;
 import com.project.artifactory.entity.Blob;
+import com.project.artifactory.mapper.BlobMapper;
 import com.project.artifactory.repository.BlobRepository;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.core.io.InputStreamResource;
 import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
 import org.springframework.util.StreamUtils;
@@ -21,13 +24,15 @@ public class StorageService {
     private final Path root;
     private final long maxBytes;
     private final BlobRepository blobRepository;
+    private final BlobMapper blobMapper;
 
     public StorageService(@Value("${artifact.storage.location}") String rootDir,
                           @Value("${artifact.upload.max-bytes}") long maxBytes,
-                          BlobRepository blobRepository) {
+                          BlobRepository blobRepository, BlobMapper blobMapper) {
         this.root = Paths.get(rootDir).toAbsolutePath().normalize();
         this.maxBytes = maxBytes;
         this.blobRepository = blobRepository;
+        this.blobMapper = blobMapper;
     }
 
     @PostConstruct
@@ -35,9 +40,21 @@ public class StorageService {
         Files.createDirectories(root);
     }
 
-    public Optional<Blob> getBlob(String sha256) {
-        return blobRepository.findById(sha256);
+    public BlobResponse findBlob(Long id) {
+        Optional<Blob> blob = blobRepository.findById(id);
+        return blob.map(blobMapper::toResponse).orElse(null);
     }
+
+    public InputStreamResource downloadBlob(String sha256) throws Exception {
+        Blob blob = blobRepository.findById(sha256)
+                .orElseThrow(() -> new RuntimeException("Blob not found"));
+
+        InputStream in = loadBlobAsStream(blob.getSha256());
+
+        return new InputStreamResource(in);
+
+    }
+
 
     /**
      * Stores uploaded file to CAS storage while computing SHA-256.
@@ -56,7 +73,6 @@ public class StorageService {
             md = MessageDigest.getInstance("SHA-256");
             try (DigestInputStream dis = new DigestInputStream(in, md)) {
                 long copied = StreamUtils.copy(dis, out);
-                // copied bytes already written
             }
         } catch (Exception e) {
             Files.deleteIfExists(tmp);
@@ -71,17 +87,13 @@ public class StorageService {
             Files.deleteIfExists(tmp);
             return blobRepository.findById(sha256)
                     .orElseGet(() -> {
-                        try {
-                            Blob b = Blob.builder()
-                                    .sha256(sha256)
-                                    .size(Files.size(blobPath))
-                                    .localPath(blobPath.toString())
-                                    .mediaType(file.getContentType())
-                                    .build();
-                            return blobRepository.save(b);
-                        } catch (IOException ex) {
-                            throw new UncheckedIOException(ex);
-                        }
+                        Blob blob = new Blob();
+                        blob.setSha256(sha256);
+                        blob.setSize(file.getSize());
+                        blob.setLocalPath(blobPath.toString());
+                        blob.setMediaType(file.getContentType());
+
+                        return blobRepository.save(blob);
                     });
         }
 
@@ -92,18 +104,16 @@ public class StorageService {
             Files.move(tmp, blobPath, StandardCopyOption.REPLACE_EXISTING);
         }
 
-        Blob blob = Blob.builder()
-                .sha256(sha256)
-                .size(Files.size(blobPath))
-                .localPath(blobPath.toString())
-                .mediaType(file.getContentType())
-                .build();
+        Blob blob = new Blob();
+        blob.setSha256(sha256);
+        blob.setSize(Files.size(blobPath));
+        blob.setLocalPath(blobPath.toString());
+        blob.setMediaType(file.getContentType());
 
         return blobRepository.save(blob);
     }
 
     public Path computeBlobPath(String sha256) {
-        // two-level fanout: ab/cd/<sha256>
         String a = sha256.substring(0, 2);
         String b = sha256.substring(2, 4);
         return root.resolve(a).resolve(b).resolve(sha256);
@@ -120,4 +130,5 @@ public class StorageService {
             throw new FileNotFoundException("Failed to open blob: " + e.getMessage());
         }
     }
+
 }
