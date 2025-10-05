@@ -1,4 +1,4 @@
-package com.project.artifactory.service;
+package com.project.artifactory.service.implementation;
 
 import com.project.artifactory.dto.BlobResponse;
 import com.project.artifactory.entity.Blob;
@@ -19,16 +19,16 @@ import java.util.HexFormat;
 import java.util.Optional;
 
 @Service
-public class StorageService {
+public class StorageServiceImpl {
 
     private final Path root;
     private final long maxBytes;
     private final BlobRepository blobRepository;
     private final BlobMapper blobMapper;
 
-    public StorageService(@Value("${artifact.storage.location}") String rootDir,
-                          @Value("${artifact.upload.max-bytes}") long maxBytes,
-                          BlobRepository blobRepository, BlobMapper blobMapper) {
+    public StorageServiceImpl(@Value("${artifact.storage.location}") String rootDir,
+                              @Value("${artifact.upload.max-bytes}") long maxBytes,
+                              BlobRepository blobRepository, BlobMapper blobMapper) {
         this.root = Paths.get(rootDir).toAbsolutePath().normalize();
         this.maxBytes = maxBytes;
         this.blobRepository = blobRepository;
