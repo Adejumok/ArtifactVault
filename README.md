@@ -1,12 +1,17 @@
 # ArtifactVault
 ArtifactVault is an open-source artifact repository manager built with Spring Boot and Java. It is a lightweight, open-source platform for storing, versioning, securing, and replicating binaries and artifacts across multiple repositories
 
-## 🚀 Why ArtifactVault?
+## What It Does
 
-Modern software development relies on binaries, artifacts, and models — not just source code.
-Yet most artifact management solutions are either **too heavy, too complex, or locked behind costly enterprise licenses**.
+📦 Store software files — like .jar, .zip, or any binary.
 
-**ArtifactVault** is built to change that.
+🕒 Keep version history — track every version of your artifacts.
+
+🔒 Secure your files — verify integrity and prevent tampering.
+
+🌍 Share or replicate files across multiple repositories.
+
+⚙️ Works anywhere — locally, in CI/CD pipelines, or in the cloud.
 
 ### 🔹 Key Advantages
 
